@@ -1,0 +1,12 @@
+[package]
+name = "oxels"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytemuck = "1.23.0"
+num-traits = "0.2.19"
+
+[lib]
+name = "oxels"
+path = "src/lib.rs"
