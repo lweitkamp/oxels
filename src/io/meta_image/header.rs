@@ -25,15 +25,9 @@ struct RawHeader {
 // filled header for image bytes retrieval
 #[derive(Debug)]
 pub(super) struct Header {
-    // pub object_type: String,
-    // pub n_dims: u8,
-    // pub binary_data: bool,
-    // pub binary_data_byte_order_msb: bool,
     pub compressed_data: bool,
     pub transform_matrix: (u8, u8, u8, u8, u8, u8, u8, u8, u8),
     pub offset: (f64, f64, f64),
-    // pub center_of_rotation: (f64, f64, f64),
-    // pub anatomical_orientation: String,
     pub element_spacing: (f64, f64, f64),
     pub dim_size: (u32, u32, u32),
     pub element_type: String,
@@ -69,15 +63,9 @@ impl TryFrom<RawHeader> for Header {
 
     fn try_from(r: RawHeader) -> Result<Self, Self::Error> {
         Ok(Header {
-            // object_type: r.object_type.ok_or(HeaderError::Missing("ObjectType"))?,
-            // n_dims: r.n_dims.ok_or(HeaderError::Missing("NDims"))?,
-            // binary_data: r.binary_data.ok_or(HeaderError::Missing("BinaryData"))?,
-            // binary_data_byte_order_msb: r.binary_data_byte_order_msb.ok_or(HeaderError::Missing("BinaryDataByteOrderMSB"))?,
             compressed_data: r.compressed_data.ok_or(HeaderError::Missing("CompressedData"))?,
             transform_matrix: r.transform_matrix.ok_or(HeaderError::Missing("TransformMatrix"))?,
             offset: r.offset.ok_or(HeaderError::Missing("Offset"))?,
-            // center_of_rotation: r.center_of_rotation.ok_or(HeaderError::Missing("CenterOfRotation"))?,
-            // anatomical_orientation: r.anatomical_orientation.ok_or(HeaderError::Missing("AnatomicalOrientation"))?,
             element_spacing: r.element_spacing.ok_or(HeaderError::Missing("ElementSpacing"))?,
             dim_size: r.dim_size.ok_or(HeaderError::Missing("DimSize"))?,
             element_type: r.element_type.ok_or(HeaderError::Missing("ElementType"))?,
