@@ -101,6 +101,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -113,6 +114,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -125,6 +127,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -137,6 +140,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -149,6 +153,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -161,6 +166,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -173,6 +179,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -185,6 +192,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -197,6 +205,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
@@ -209,6 +218,7 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
                 depth: depth as u32,
                 spacing: header.element_spacing,
                 origin: header.offset,
+                direction: header.transform_matrix,
             };
             Box::new(image)
         }
