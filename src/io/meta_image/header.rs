@@ -153,14 +153,23 @@ pub(super) fn parse_header(filename: &str) -> Result<Header, HeaderError> {
                     ));
                 },
                 "ElementType" => raw.element_type = Some(value.to_string()),
-                "ElementDataFile" => raw.element_data_file = Some(value.to_string()),
+                "ElementDataFile" => {
+                    raw.element_data_file = Some(value.to_string());
+
+                    // If the data is inline ("LOCAL"), stop reading more lines immediately.
+                    if value.eq_ignore_ascii_case("LOCAL") {
+                        // account for this header line’s length before breaking
+                        data_offset += bytes_this_line as u64;
+                    }
+                    break;
+                }
                 _ => {
                     // Unknown key. Shouldn't happen?
                 }
             }
             data_offset += bytes_this_line as u64;
         } else {
-            break; // Start of binary data.
+            break; // more like a fail-safe for invalid headers.
         }
     }
 
