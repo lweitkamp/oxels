@@ -4,6 +4,7 @@ use super::header::{HeaderError, parse_header};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
+use flate2::read::ZlibDecoder;
 
 use bytemuck::{cast_slice, Pod};
 
@@ -86,10 +87,23 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
     }
 
     // Now just load the file and get bytes from the offset.
-    let mut f = File::open(data_filename).expect("Failed to open MetaImage file");
+    let mut f = File::open(&data_filename).expect("Failed to open MetaImage file");
     f.seek(SeekFrom::Start(data_offset))
         .expect("Failed to seek to data offset");
-    f.read_exact(&mut buffer).expect("Failed to read voxel data");
+
+    // If file is compressed we have to read _all_ bytes in file, otherwise we can do exact reads.
+    if header.compressed_data {
+        let mut compressed = Vec::new();
+        f.read_to_end(&mut compressed).expect("Failed to read compressed voxel data");
+        let mut decoder = ZlibDecoder::new(&compressed[..]);
+        let mut decompressed = Vec::with_capacity(total_bytes);
+        decoder
+            .read_to_end(&mut decompressed)
+            .expect("Failed to decompress voxel data");
+        buffer = decompressed;
+    } else {
+        f.read_exact(&mut buffer).expect("Failed to read voxel data");
+    }
 
     match etype {
         ElementType::U8 => {

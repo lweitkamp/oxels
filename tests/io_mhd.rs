@@ -62,3 +62,18 @@ fn assert_sum7203_int64_uncompressed() {
 fn assert_sum7203_float64_uncompressed() {
     assert_sum7203("assets/tensors/float64_uncompressed.mhd");
 }
+
+#[test]
+fn assert_equal_with_compression() {
+    let compressed: Box<dyn AnyImage> = load_meta_image("assets/tensors/uint16_compressed.mhd");
+    let uncompressed: Box<dyn AnyImage> = load_meta_image("assets/tensors/uint16_uncompressed.mhd");
+
+        for (a, b) in compressed.iter_f64().zip(uncompressed.iter_f64()) {
+            assert!(
+                (a - b).abs() < 1e-6,
+                "Mismatch between compressed and uncompressed: {} vs {}",
+                a,
+                b
+            );
+        }
+}
