@@ -5,6 +5,8 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, BufWriter, Write};
 use std::path::Path;
 use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 use std::any::TypeId;
 
 use bytemuck::{cast_slice, Pod};
@@ -268,41 +270,38 @@ fn element_type_str<T: 'static>() -> &'static str {
     }
 }
 
-pub fn save_image<T>(img: Image<T>, file_path: &str) -> std::io::Result<()>
-where 
+
+pub fn save_image<T>(img: Image<T>, file_path: &str, compress: bool) -> std::io::Result<()>
+where
     T: Pod + 'static,
 {
-    // Extract filname and extension.
     let path = Path::new(file_path);
-    let filename = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or_default();
-
-    let ext = path
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or_default();
+    let filename = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
+    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or_default();
 
     if ext != "mha" && ext != "mhd" {
         panic!("Unsupported file extension: {}. Only 'mha' and 'mhd' are allowed.", ext);
     }
 
-    // Set ElementDataFile LOCAL or filename.zraw.
+    // choose LOCAL for .mha or generate either .zraw/.raw for .mhd
     let (element_data_file, raw_path) = if ext == "mha" {
         ("LOCAL".to_string(), file_path.to_string())
     } else {
-        let raw_filename = format!("{}.zraw", filename);
+        let raw_filename = if compress {
+            format!("{}.zraw", filename)
+        } else {
+            format!("{}.raw", filename)
+        };
         let raw_path = path.with_file_name(&raw_filename).to_str().unwrap().to_string();
         (raw_filename, raw_path)
     };
 
     let mut header = BufWriter::new(File::create(file_path)?);
     writeln!(header, "ObjectType = Image")?;
-    writeln!(header, "NDims = 3")?;  // NOTE: hardcoded 3D.
+    writeln!(header, "NDims = 3")?;
     writeln!(header, "BinaryData = True")?;
     writeln!(header, "BinaryDataByteOrderMSB = False")?;
-    writeln!(header, "CompressedData = False")?;
+    writeln!(header, "CompressedData = {}", if compress { "True" } else { "False" })?;
     let (d0, d1, d2, d3, d4, d5, d6, d7, d8) = img.direction;
     writeln!(header, "TransformMatrix = {} {} {} {} {} {} {} {} {}", d0, d1, d2, d3, d4, d5, d6, d7, d8)?;
     writeln!(header, "Offset = {} {} {}", img.origin.0, img.origin.1, img.origin.2)?;
@@ -312,66 +311,62 @@ where
     writeln!(header, "ElementDataFile = {}", element_data_file)?;
     header.flush()?;
 
-    // Write directly to the next bytes for mha
-    if ext == "mha" {
-        let slice: &[T] = img.voxels.as_slice();
-        let bytes: &[u8] = unsafe {
-            std::slice::from_raw_parts(
-                slice.as_ptr() as *const u8,
-                slice.len() * std::mem::size_of::<T>(),
-            )
-        };
-        header.get_mut().write_all(bytes)?;
-        header.flush()?;
-        return Ok(());
-    }
-
-    let mut raw = BufWriter::new(File::create(raw_path)?);
-    // if your Image<T> stores its buffer as a &[T]:
     let slice: &[T] = img.voxels.as_slice();
-    // cast it to bytes and write
     let bytes: &[u8] = unsafe {
         std::slice::from_raw_parts(
             slice.as_ptr() as *const u8,
             slice.len() * std::mem::size_of::<T>(),
         )
     };
-    raw.write_all(bytes)?;
-    raw.flush()?;
+
+    if ext == "mha" {
+        // inline into .mha
+        if compress {
+            let mut encoder = ZlibEncoder::new(header.get_mut(), Compression::default());
+            encoder.write_all(bytes)?;
+            encoder.finish()?;
+        } else {
+            header.get_mut().write_all(bytes)?;
+        }
+        header.flush()?;
+        return Ok(());
+    }
+
+    // write out .zraw/.raw
+    let mut raw = BufWriter::new(File::create(raw_path)?);
+    if compress {
+        let mut encoder = ZlibEncoder::new(raw, Compression::default());
+        encoder.write_all(bytes)?;
+        encoder.finish()?;
+    } else {
+        raw.write_all(bytes)?;
+        raw.flush()?;
+    }
     Ok(())
 }
 
 
-pub fn save_meta_image(img: &dyn AnyImage, file_path: &str) -> std::io::Result<()> {
+pub fn save_meta_image(img: &dyn AnyImage, file_path: &str, compress: bool) -> std::io::Result<()> {
     if let Some(i) = img.as_any().downcast_ref::<Image<u8>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<i8>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<u16>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<i16>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<u32>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<i32>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<f32>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<u64>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<i64>>() {
-        return save_image(i.clone(), file_path);
-    }
-    else if let Some(i) = img.as_any().downcast_ref::<Image<f64>>() {
-        return save_image(i.clone(), file_path);
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<i8>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<u16>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<i16>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<u32>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<i32>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<f32>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<u64>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<i64>>() {
+        return save_image(i.clone(), file_path, compress);
+    } else if let Some(i) = img.as_any().downcast_ref::<Image<f64>>() {
+        return save_image(i.clone(), file_path, compress);
     }
     Err(std::io::Error::new(
         std::io::ErrorKind::InvalidInput,

@@ -83,7 +83,42 @@ fn roundtrip_save_and_load_uint16() {
         direction: (1,0,0,0,1,0,0,0,1),
     };
     let path = "test_uint16.mha";
-    save_meta_image(&img, path).unwrap();
+    save_meta_image(&img, path, false).unwrap();
+
+    // Load it back
+    let loaded: Box<dyn AnyImage> = oxels::load_meta_image(path);
+
+    // Check metadata
+    assert_eq!(loaded.width(), 2);
+    assert_eq!(loaded.height(), 2);
+    assert_eq!(loaded.depth(), 2);
+    assert_eq!(loaded.spacing(), (1.0, 1.0, 1.0));
+    assert_eq!(loaded.origin(), (0.0, 0.0, 0.0));
+    assert_eq!(loaded.direction(), (1,0,0,0,1,0,0,0,1));
+
+    // Check voxel values
+    let loaded_voxels: Vec<u16> = loaded.iter_f64().map(|v| v as u16).collect();
+    assert_eq!(loaded_voxels, voxels);
+
+    // Clean up
+    remove_file(path).unwrap();
+}
+
+#[test]
+fn roundtrip_save_and_load_uint16_compressed() {
+    // Create a simple 2x2x2 image with known values
+    let voxels = vec![1u16, 2, 3, 4, 5, 6, 7, 8];
+    let img = Image {
+        voxels: voxels.clone(),
+        width: 2,
+        height: 2,
+        depth: 2,
+        spacing: (1.0, 1.0, 1.0),
+        origin: (0.0, 0.0, 0.0),
+        direction: (1,0,0,0,1,0,0,0,1),
+    };
+    let path = "test_uint16_compressed.mha";
+    save_meta_image(&img, path, true).unwrap();
 
     // Load it back
     let loaded: Box<dyn AnyImage> = oxels::load_meta_image(path);
