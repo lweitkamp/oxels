@@ -2,9 +2,10 @@ use crate::image::{Image, AnyImage};
 
 use super::header::{HeaderError, parse_header};
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, BufWriter, Write};
 use std::path::Path;
 use flate2::read::ZlibDecoder;
+use std::any::TypeId;
 
 use bytemuck::{cast_slice, Pod};
 
@@ -184,6 +185,19 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             };
             Box::new(image)
         }
+                ElementType::F32 => {
+            let vox_vec: Vec<f32> = bytes_to_vec::<f32>(buffer).expect("Bad byte count");
+            let image = Image::<f32> {
+                voxels: vox_vec,
+                width: width as u32,
+                height: height as u32,
+                depth: depth as u32,
+                spacing: header.element_spacing,
+                origin: header.offset,
+                direction: header.transform_matrix,
+            };
+            Box::new(image)
+        }
         ElementType::I64 => {
             let vox_vec: Vec<i64> = bytes_to_vec::<i64>(buffer).expect("Bad byte count");
             let image = Image::<i64> {
@@ -210,19 +224,6 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             };
             Box::new(image)
         }
-        ElementType::F32 => {
-            let vox_vec: Vec<f32> = bytes_to_vec::<f32>(buffer).expect("Bad byte count");
-            let image = Image::<f32> {
-                voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
-                spacing: header.element_spacing,
-                origin: header.offset,
-                direction: header.transform_matrix,
-            };
-            Box::new(image)
-        }
         ElementType::F64 => {
             let vox_vec: Vec<f64> = bytes_to_vec::<f64>(buffer).expect("Bad byte count");
             let image = Image::<f64> {
@@ -237,4 +238,143 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             Box::new(image)
         }
     }
+}
+
+
+fn element_type_str<T: 'static>() -> &'static str {
+    let tid = TypeId::of::<T>();
+    if tid == TypeId::of::<u8>() {
+        "MET_UCHAR"
+    } else if tid == TypeId::of::<i8>() {
+        "MET_CHAR"
+    } else if tid == TypeId::of::<u16>() {
+        "MET_USHORT"
+    } else if tid == TypeId::of::<i16>() {
+        "MET_SHORT"
+    } else if tid == TypeId::of::<u32>() {
+        "MET_UINT"
+    } else if tid == TypeId::of::<i32>() {
+        "MET_INT"
+    } else if tid == TypeId::of::<f32>() {
+        "MET_FLOAT"
+    } else if tid == TypeId::of::<u64>() {
+        "MET_ULONG_LONG"
+    } else if tid == TypeId::of::<i64>() {
+        "MET_LONG_LONG"
+    } else if tid == TypeId::of::<f64>() {
+        "MET_DOUBLE"
+    } else {
+        unimplemented!("no ElementType mapping for {}", std::any::type_name::<T>())
+    }
+}
+
+pub fn save_image<T>(img: Image<T>, file_path: &str) -> std::io::Result<()>
+where 
+    T: Pod + 'static,
+{
+    // Extract filname and extension.
+    let path = Path::new(file_path);
+    let filename = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+
+    if ext != "mha" && ext != "mhd" {
+        panic!("Unsupported file extension: {}. Only 'mha' and 'mhd' are allowed.", ext);
+    }
+
+    // Set ElementDataFile LOCAL or filename.zraw.
+    let (element_data_file, raw_path) = if ext == "mha" {
+        ("LOCAL".to_string(), file_path.to_string())
+    } else {
+        let raw_filename = format!("{}.zraw", filename);
+        let raw_path = path.with_file_name(&raw_filename).to_str().unwrap().to_string();
+        (raw_filename, raw_path)
+    };
+
+    let mut header = BufWriter::new(File::create(file_path)?);
+    writeln!(header, "ObjectType = Image")?;
+    writeln!(header, "NDims = 3")?;  // NOTE: hardcoded 3D.
+    writeln!(header, "BinaryData = True")?;
+    writeln!(header, "BinaryDataByteOrderMSB = False")?;
+    writeln!(header, "CompressedData = False")?;
+    let (d0, d1, d2, d3, d4, d5, d6, d7, d8) = img.direction;
+    writeln!(header, "TransformMatrix = {} {} {} {} {} {} {} {} {}", d0, d1, d2, d3, d4, d5, d6, d7, d8)?;
+    writeln!(header, "Offset = {} {} {}", img.origin.0, img.origin.1, img.origin.2)?;
+    writeln!(header, "ElementSpacing = {} {} {}", img.spacing.0, img.spacing.1, img.spacing.2)?;
+    writeln!(header, "DimSize = {} {} {}", img.width, img.height, img.depth)?;
+    writeln!(header, "ElementType = {}", element_type_str::<T>())?;
+    writeln!(header, "ElementDataFile = {}", element_data_file)?;
+    header.flush()?;
+
+    // Write directly to the next bytes for mha
+    if ext == "mha" {
+        let slice: &[T] = img.voxels.as_slice();
+        let bytes: &[u8] = unsafe {
+            std::slice::from_raw_parts(
+                slice.as_ptr() as *const u8,
+                slice.len() * std::mem::size_of::<T>(),
+            )
+        };
+        header.get_mut().write_all(bytes)?;
+        header.flush()?;
+        return Ok(());
+    }
+
+    let mut raw = BufWriter::new(File::create(raw_path)?);
+    // if your Image<T> stores its buffer as a &[T]:
+    let slice: &[T] = img.voxels.as_slice();
+    // cast it to bytes and write
+    let bytes: &[u8] = unsafe {
+        std::slice::from_raw_parts(
+            slice.as_ptr() as *const u8,
+            slice.len() * std::mem::size_of::<T>(),
+        )
+    };
+    raw.write_all(bytes)?;
+    raw.flush()?;
+    Ok(())
+}
+
+
+pub fn save_meta_image(img: &dyn AnyImage, file_path: &str) -> std::io::Result<()> {
+    if let Some(i) = img.as_any().downcast_ref::<Image<u8>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<i8>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<u16>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<i16>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<u32>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<i32>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<f32>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<u64>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<i64>>() {
+        return save_image(i.clone(), file_path);
+    }
+    else if let Some(i) = img.as_any().downcast_ref::<Image<f64>>() {
+        return save_image(i.clone(), file_path);
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "Unsupported pixel type for save_meta_image",
+    ))
 }
