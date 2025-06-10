@@ -1,5 +1,5 @@
 // src/image/image.rs
-
+use std::any::Any;
 use bytemuck::Pod;
 use num_traits::NumCast;
 
@@ -21,7 +21,8 @@ impl<T> Image<T> {
 }
 
 /// We don't know T at compiletime so this is a placeholder.
-pub trait AnyImage {
+pub trait AnyImage: Any {
+    fn as_any(&self) -> &dyn Any;
     fn width(&self)  -> u32;
     fn height(&self) -> u32;
     fn depth(&self)  -> u32;
@@ -38,6 +39,10 @@ impl<T> AnyImage for Image<T>
 where
     T: Pod + NumCast + Copy + 'static,
 {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn width(&self) -> u32 {
         self.width
     }
