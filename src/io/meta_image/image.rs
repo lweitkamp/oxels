@@ -65,12 +65,8 @@ fn bytes_to_vec<T: Pod>(raw: Vec<u8>) -> Result<Vec<T>, &'static str> {
 pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
     let header = parse_header(filename).expect("Invalid Meta Image");
 
-    // First, get the voxel count in the image.
-    let (width, height, depth) = header.dim_size;
-    let voxel_count = (width as usize) * (height as usize) * (depth as usize);
-
-    // Next, init a vector with total byte size (voxels * data type)
     let etype: ElementType = header.element_type.parse().expect("Unsupported Element type!");
+    let voxel_count: usize = header.dim_size.iter().map(|&v| v as usize).product();
     let total_bytes = etype.bytes() * voxel_count;
     let mut buffer = vec![0u8; total_bytes];
 
@@ -113,9 +109,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<u8> = buffer; // already Vec<u8>
             let image = Image::<u8> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -126,9 +122,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<i8> = buffer.iter().map(|&b| b as i8).collect();
             let image = Image::<i8> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -139,9 +135,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<i16> = bytes_to_vec::<i16>(buffer).expect("Bad byte count");
             let image = Image::<i16> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -152,9 +148,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<u16> = bytes_to_vec::<u16>(buffer).expect("Bad byte count");
             let image = Image::<u16> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -165,9 +161,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<i32> = bytes_to_vec::<i32>(buffer).expect("Bad byte count");
             let image = Image::<i32> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -178,9 +174,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<u32> = bytes_to_vec::<u32>(buffer).expect("Bad byte count");
             let image = Image::<u32> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -191,9 +187,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<f32> = bytes_to_vec::<f32>(buffer).expect("Bad byte count");
             let image = Image::<f32> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -204,9 +200,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<i64> = bytes_to_vec::<i64>(buffer).expect("Bad byte count");
             let image = Image::<i64> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -217,9 +213,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<u64> = bytes_to_vec::<u64>(buffer).expect("Bad byte count");
             let image = Image::<u64> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -230,9 +226,9 @@ pub fn load_meta_image(filename: &str) -> Box<dyn AnyImage> {
             let vox_vec: Vec<f64> = bytes_to_vec::<f64>(buffer).expect("Bad byte count");
             let image = Image::<f64> {
                 voxels: vox_vec,
-                width: width as u32,
-                height: height as u32,
-                depth: depth as u32,
+                width: header.dim_size[0],
+                height: header.dim_size[1],
+                depth: header.dim_size[2],
                 spacing: header.element_spacing,
                 origin: header.offset,
                 direction: header.transform_matrix,
@@ -302,10 +298,9 @@ where
     writeln!(header, "BinaryData = True")?;
     writeln!(header, "BinaryDataByteOrderMSB = False")?;
     writeln!(header, "CompressedData = {}", if compress { "True" } else { "False" })?;
-    let (d0, d1, d2, d3, d4, d5, d6, d7, d8) = img.direction;
-    writeln!(header, "TransformMatrix = {} {} {} {} {} {} {} {} {}", d0, d1, d2, d3, d4, d5, d6, d7, d8)?;
-    writeln!(header, "Offset = {} {} {}", img.origin.0, img.origin.1, img.origin.2)?;
-    writeln!(header, "ElementSpacing = {} {} {}", img.spacing.0, img.spacing.1, img.spacing.2)?;
+    writeln!(header, "TransformMatrix = {}", img.direction.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" "))?;
+    writeln!(header, "Offset = {}", img.origin.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" "))?;
+    writeln!(header, "ElementSpacing = {}", img.spacing.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(" "))?;
     writeln!(header, "DimSize = {} {} {}", img.width, img.height, img.depth)?;
     writeln!(header, "ElementType = {}", element_type_str::<T>())?;
     writeln!(header, "ElementDataFile = {}", element_data_file)?;

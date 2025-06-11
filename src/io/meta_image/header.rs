@@ -9,12 +9,12 @@ struct RawHeader {
     binary_data: Option<bool>,
     binary_data_byte_order_msb: Option<bool>,
     compressed_data: Option<bool>,
-    transform_matrix: Option<(u8, u8, u8, u8, u8, u8, u8, u8, u8)>,
-    offset: Option<(f64, f64, f64)>,
-    center_of_rotation: Option<(f64, f64, f64)>,
+    transform_matrix: Option<[f64; 9]>,
+    offset: Option<[f64; 3]>,
+    center_of_rotation: Option<[f64; 3]>,
     anatomical_orientation: Option<String>,
-    element_spacing: Option<(f64, f64, f64)>,
-    dim_size: Option<(u32, u32, u32)>,
+    element_spacing: Option<[f64; 3]>,
+    dim_size: Option<[u32; 3]>,
     element_type: Option<String>,
     element_data_file: Option<String>,
 
@@ -26,10 +26,10 @@ struct RawHeader {
 #[derive(Debug)]
 pub(super) struct Header {
     pub compressed_data: bool,
-    pub transform_matrix: (u8, u8, u8, u8, u8, u8, u8, u8, u8),
-    pub offset: (f64, f64, f64),
-    pub element_spacing: (f64, f64, f64),
-    pub dim_size: (u32, u32, u32),
+    pub transform_matrix: [f64; 9],
+    pub offset: [f64; 3],
+    pub element_spacing: [f64; 3],
+    pub dim_size: [u32; 3],
     pub element_type: String,
     pub element_data_file: String,
     pub data_offset: u64,
@@ -108,37 +108,37 @@ pub(super) fn parse_header(filename: &str) -> Result<Header, HeaderError> {
                 "BinaryDataByteOrderMSB" => raw.binary_data_byte_order_msb = parse_bool(value),
                 "CompressedData" => raw.compressed_data = parse_bool(value),
                 "TransformMatrix" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<u8>().unwrap());
-                    raw.transform_matrix = Some((
+                    let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
+                    raw.transform_matrix = Some([
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ));
+                    ]);
                 },
                 "Offset" => {
                     let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.offset = Some((
+                    raw.offset = Some([
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ));
+                    ]);
                 },
                 "CenterOfRotation" => {
                     let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.center_of_rotation = Some((
+                    raw.center_of_rotation = Some([
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ));
+                    ]);
                 },
                 "AnatomicalOrientation" => raw.anatomical_orientation = Some(value.to_string()),
                 "ElementSpacing" => {
                     let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.element_spacing = Some((
+                    raw.element_spacing = Some([
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ));
+                    ]);
                 },
                 "DimSize" => {
                     let mut iter = value.split_whitespace().map(|s| s.parse::<u32>().unwrap());
-                    raw.dim_size = Some((
+                    raw.dim_size = Some([
                         iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ));
+                    ]);
                 },
                 "ElementType" => raw.element_type = Some(value.to_string()),
                 "ElementDataFile" => {
