@@ -9,9 +9,9 @@ pub struct Image<T> {
     pub width:  u32,
     pub height: u32,
     pub depth:  u32,
-    pub spacing: (f64, f64, f64),
-    pub origin:  (f64, f64, f64),
-    pub direction: (u8, u8, u8, u8, u8, u8, u8, u8, u8),
+    pub spacing: [f64; 3],
+    pub origin:  [f64; 3],
+    pub direction: [f64; 9],
 }
 
 impl<T> Image<T> {
@@ -26,9 +26,9 @@ pub trait AnyImage: Any {
     fn width(&self)  -> u32;
     fn height(&self) -> u32;
     fn depth(&self)  -> u32;
-    fn spacing(&self) -> (f64, f64, f64);
-    fn origin(&self)  -> (f64, f64, f64);
-    fn direction(&self)  -> (u8, u8, u8, u8, u8, u8, u8, u8, u8);
+    fn spacing(&self) -> [f64; 3];
+    fn origin(&self)  -> [f64; 3];
+    fn direction(&self)  -> [f64; 9];
 
     /// Iterate (lazily) through all values as f64.
     fn iter_f64(&self) -> Box<dyn Iterator<Item = f64> + '_>;
@@ -52,13 +52,13 @@ where
     fn depth(&self) -> u32 {
         self.depth
     }
-    fn spacing(&self) -> (f64, f64, f64) {
+    fn spacing(&self) -> [f64; 3] {
         self.spacing
     }
-    fn origin(&self) -> (f64, f64, f64) {
+    fn origin(&self) -> [f64; 3] {
         self.origin
     }
-    fn direction(&self) -> (u8, u8, u8, u8, u8, u8, u8, u8, u8) {
+    fn direction(&self) -> [f64; 9] {
         self.direction
     }
 

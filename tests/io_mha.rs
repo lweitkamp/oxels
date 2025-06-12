@@ -78,9 +78,9 @@ fn roundtrip_save_and_load_uint16() {
         width: 2,
         height: 2,
         depth: 2,
-        spacing: (1.0, 1.0, 1.0),
-        origin: (0.0, 0.0, 0.0),
-        direction: (1,0,0,0,1,0,0,0,1),
+        spacing: [1.0, 1.0, 1.0],
+        origin: [0.0, 0.0, 0.0],
+        direction: [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],
     };
     let path = "test_uint16.mha";
     save_meta_image(&img, path, false).unwrap();
@@ -92,9 +92,9 @@ fn roundtrip_save_and_load_uint16() {
     assert_eq!(loaded.width(), 2);
     assert_eq!(loaded.height(), 2);
     assert_eq!(loaded.depth(), 2);
-    assert_eq!(loaded.spacing(), (1.0, 1.0, 1.0));
-    assert_eq!(loaded.origin(), (0.0, 0.0, 0.0));
-    assert_eq!(loaded.direction(), (1,0,0,0,1,0,0,0,1));
+    assert_eq!(loaded.spacing(), [1.0, 1.0, 1.0]);
+    assert_eq!(loaded.origin(), [0.0, 0.0, 0.0]);
+    assert_eq!(loaded.direction(), [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]);
 
     // Check voxel values
     let loaded_voxels: Vec<u16> = loaded.iter_f64().map(|v| v as u16).collect();
@@ -113,9 +113,9 @@ fn roundtrip_save_and_load_uint16_compressed() {
         width: 2,
         height: 2,
         depth: 2,
-        spacing: (1.0, 1.0, 1.0),
-        origin: (0.0, 0.0, 0.0),
-        direction: (1,0,0,0,1,0,0,0,1),
+        spacing: [1.0, 1.0, 1.0],
+        origin: [0.0, 0.0, 0.0],
+        direction: [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0],
     };
     let path = "test_uint16_compressed.mha";
     save_meta_image(&img, path, true).unwrap();
@@ -127,9 +127,9 @@ fn roundtrip_save_and_load_uint16_compressed() {
     assert_eq!(loaded.width(), 2);
     assert_eq!(loaded.height(), 2);
     assert_eq!(loaded.depth(), 2);
-    assert_eq!(loaded.spacing(), (1.0, 1.0, 1.0));
-    assert_eq!(loaded.origin(), (0.0, 0.0, 0.0));
-    assert_eq!(loaded.direction(), (1,0,0,0,1,0,0,0,1));
+    assert_eq!(loaded.spacing(), [1.0, 1.0, 1.0]);
+    assert_eq!(loaded.origin(), [0.0, 0.0, 0.0]);
+    assert_eq!(loaded.direction(), [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]);
 
     // Check voxel values
     let loaded_voxels: Vec<u16> = loaded.iter_f64().map(|v| v as u16).collect();
