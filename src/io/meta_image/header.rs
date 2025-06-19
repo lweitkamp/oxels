@@ -39,6 +39,7 @@ pub(super) struct Header {
 pub(super) enum HeaderError {
     Missing(&'static str),  // Missing key-values that we need
     Parse(std::io::Error),  // Generic Parsing error (file issue)
+    InvalidValue(&'static str), // For malformed values
     UnsupportedElementType(String),
 }
 
@@ -47,6 +48,7 @@ impl std::fmt::Display for HeaderError {
         match self {
             HeaderError::Missing(key) => write!(f, "Missing header key: {}", key),
             HeaderError::Parse(e) => write!(f, "Parse error: {}", e),
+            HeaderError::InvalidValue(key) => write!(f, "Invalid value for header key: {}", key),
             HeaderError::UnsupportedElementType(e) => write!(f, "Unsupported element type: {}", e),
         }
     }
@@ -56,6 +58,22 @@ impl std::error::Error for HeaderError {}
 
 impl From<std::io::Error> for HeaderError {
     fn from(e: std::io::Error) -> Self { HeaderError::Parse(e) }
+}
+
+fn parse_array<T, const N: usize>(value: &str, key_name: &'static str) -> Result<[T; N], HeaderError>
+where
+    T: std::str::FromStr + Default + Copy,
+{
+    let mut result = [T::default(); N];
+    let parts: Vec<_> = value.split_whitespace().collect();
+    if parts.len() != N {
+        return Err(HeaderError::InvalidValue(key_name));
+    }
+
+    for (i, part) in parts.into_iter().enumerate() {
+        result[i] = part.parse::<T>().map_err(|_| HeaderError::InvalidValue(key_name))?;
+    }
+    Ok(result)
 }
 
 impl TryFrom<RawHeader> for Header {
@@ -107,39 +125,12 @@ pub(super) fn parse_header(filename: &str) -> Result<Header, HeaderError> {
                 "BinaryData" => raw.binary_data = parse_bool(value),
                 "BinaryDataByteOrderMSB" => raw.binary_data_byte_order_msb = parse_bool(value),
                 "CompressedData" => raw.compressed_data = parse_bool(value),
-                "TransformMatrix" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.transform_matrix = Some([
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ]);
-                },
-                "Offset" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.offset = Some([
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ]);
-                },
-                "CenterOfRotation" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.center_of_rotation = Some([
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ]);
-                },
+                "TransformMatrix" => raw.transform_matrix = Some(parse_array(value, "TransformMatrix")?),
+                "Offset" => raw.offset = Some(parse_array(value, "Offset")?),
+                "CenterOfRotation" => raw.center_of_rotation = Some(parse_array(value, "CenterOfRotation")?),
                 "AnatomicalOrientation" => raw.anatomical_orientation = Some(value.to_string()),
-                "ElementSpacing" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<f64>().unwrap());
-                    raw.element_spacing = Some([
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ]);
-                },
-                "DimSize" => {
-                    let mut iter = value.split_whitespace().map(|s| s.parse::<u32>().unwrap());
-                    raw.dim_size = Some([
-                        iter.next().unwrap(), iter.next().unwrap(), iter.next().unwrap(),
-                    ]);
-                },
+                "ElementSpacing" => raw.element_spacing = Some(parse_array(value, "ElementSpacing")?),
+                "DimSize" => raw.dim_size = Some(parse_array(value, "DimSize")?),
                 "ElementType" => raw.element_type = Some(value.to_string()),
                 "ElementDataFile" => {
                     raw.element_data_file = Some(value.to_string());
