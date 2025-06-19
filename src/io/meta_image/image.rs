@@ -272,26 +272,37 @@ where
     T: Pod + 'static,
 {
     let path = Path::new(file_path);
-    let filename = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or_default();
 
     if ext != "mha" && ext != "mhd" {
-        panic!("Unsupported file extension: {}. Only 'mha' and 'mhd' are allowed.", ext);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("Unsupported file extension: '{}'. Only 'mha' and 'mhd' are allowed.", ext)
+        ));
     }
 
-    // choose LOCAL for .mha or generate either .zraw/.raw for .mhd
+    // choose LOCAL for .mha or generate either .zraw/.raw for .mhd.
     let (element_data_file, raw_path) = if ext == "mha" {
-        ("LOCAL".to_string(), file_path.to_string())
+        Ok(("LOCAL".to_string(), file_path.to_string()))
     } else {
-        let raw_filename = if compress {
-            format!("{}.zraw", filename)
-        } else {
-            format!("{}.raw", filename)
-        };
-        let raw_path = path.with_file_name(&raw_filename).to_str().unwrap().to_string();
-        (raw_filename, raw_path)
-    };
+        let filename = path.file_stem().and_then(|s| s.to_str()).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "File path for .mhd must have a valid file stem.",
+            )
+        })?;
 
+        let raw_filename = format!("{}.{}", filename, if compress { "zraw" } else { "raw" });
+        path.with_file_name(&raw_filename)
+            .to_str()
+            .map(|p| (raw_filename, p.to_string()))
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Generated raw file path is not valid UTF-8",
+                )
+            })
+    }?;
     let mut header = BufWriter::new(File::create(file_path)?);
     writeln!(header, "ObjectType = Image")?;
     writeln!(header, "NDims = 3")?;
